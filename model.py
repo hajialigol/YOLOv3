@@ -18,7 +18,7 @@ def read_cfg(file):
             elif line_length > 1:  # If the string is not a new model type, you have the key and values
                 # Check if the string is a particular length:
                 # If it is, you're going to have to add the other elements as  "values" in key-value pairs
-                key = line_word_list[0]
+                key = line_word_list[0].replace("# ", "")
                 value = line_word_list[1].replace("\n", "")
                 block_map[key] = value
     return block_list

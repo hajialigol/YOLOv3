@@ -26,17 +26,18 @@ def read_cfg(file):
 
 
 def create_network(network_blocks):
-    network_info = network_blocks[0]
+    # network_info = network_blocks[0]
     in_channels = int(network_info['channels'])
     out_channels = 0
     kernel_size = 0
     stride = 1
     pad = 1
     batch_norm = 0
+    module_list = nn.ModuleList()
+
     for i, network in enumerate(network_blocks[1:]):
         sequential_module = nn.Sequential()
         x = network['model_type']
-        test_list = nn.ModuleList()  # test to see output of appending convolutional layers is (doesn't work when appending to list)
 
         try:
             out_channels = int(network['filters'])
@@ -44,6 +45,7 @@ def create_network(network_blocks):
             stride = int(network['stride'])
             padding = int(network['pad'])
             batch_norm = int(network['batch_normalize'])
+            activation_name = network['activation']
         except:
             print("Something not there")
 
@@ -58,6 +60,14 @@ def create_network(network_blocks):
             sequential_module.add_module("batch" + str(i), batch_layer)
             channels = out_channels
 
+        if activation_name == "leaky":
+            activation_layer = nn.LeakyReLU(inplace=True)
+            sequential_module.add_module(activation_name + str(i), activation_layer)
+
+        in_channels = out_channels
+        print(sequential_module)
+        module_list.append(sequential_module)
+
     # elif x == "shortcut":
     # make a shortcut layer
 
@@ -70,7 +80,7 @@ def create_network(network_blocks):
     # elif x == "upsample":
     # make an upsample layer
 
-    print((sequential_module))
+    print("Module list:", module_list)
     return network_info
 
 

@@ -1,5 +1,6 @@
 import os
 import re
+import torch.nn as nn
 
 
 def read_cfg(file):
@@ -24,6 +25,56 @@ def read_cfg(file):
     return block_list
 
 
+def create_network(network_blocks):
+    network_info = network_blocks[0]
+    in_channels = int(network_info['channels'])
+    out_channels = 0
+    kernel_size = 0
+    stride = 1
+    pad = 1
+    batch_norm = 0
+    for i, network in enumerate(network_blocks[1:]):
+        sequential_module = nn.Sequential()
+        x = network['model_type']
+        test_list = nn.ModuleList()  # test to see output of appending convolutional layers is (doesn't work when appending to list)
+
+        try:
+            out_channels = int(network['filters'])
+            kernel_size = int(network['size'])
+            stride = int(network['stride'])
+            padding = int(network['pad'])
+            batch_norm = int(network['batch_normalize'])
+        except:
+            print("Something not there")
+
+        if x == "convolutional":
+            # make a convolutional layer
+            conv_layer = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size,
+                                   stride=stride, padding=padding, bias=False)
+            sequential_module.add_module("conv" + str(i), conv_layer)
+
+        if batch_norm == 1:
+            batch_layer = nn.BatchNorm2d(num_features=out_channels)
+            sequential_module.add_module("batch" + str(i), batch_layer)
+            channels = out_channels
+
+    # elif x == "shortcut":
+    # make a shortcut layer
+
+    # elif x == "yolo":
+    # make a yolo layer
+
+    # elif x == "route":
+    # make a route layer
+
+    # elif x == "upsample":
+    # make an upsample layer
+
+    print((sequential_module))
+    return network_info
+
+
 if __name__ == "__main__":
     file_directory = os.getcwd() + '\cfg\yolov3.cfg.txt'
     block_list = read_cfg(file_directory)
+    network_info = create_network(block_list)

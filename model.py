@@ -3,6 +3,11 @@ import re
 import torch.nn as nn
 
 
+class VacantLayer(nn.Module):
+    def __init__(self):
+        super(VacantLayer, self).__init__()
+
+
 def read_cfg(file):
     block_list = []
     block_map = {}
@@ -26,7 +31,7 @@ def read_cfg(file):
 
 
 def create_network(network_blocks):
-    # network_info = network_blocks[0]
+    network_info = network_blocks[0]
     in_channels = int(network_info['channels'])
     out_channels = 0
     kernel_size = 0
@@ -44,47 +49,46 @@ def create_network(network_blocks):
             kernel_size = int(network['size'])
             stride = int(network['stride'])
             padding = int(network['pad'])
-            batch_norm = int(network['batch_normalize'])
-            activation_name = network['activation']
         except:
-            print("Something not there")
+            pass
 
         if x == "convolutional":
-            # make a convolutional layer
             conv_layer = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size,
                                    stride=stride, padding=padding, bias=False)
             sequential_module.add_module("conv" + str(i), conv_layer)
 
-        if batch_norm == 1:
-            batch_layer = nn.BatchNorm2d(num_features=out_channels)
-            sequential_module.add_module("batch" + str(i), batch_layer)
-            channels = out_channels
+            activation_name = network['activation']
 
-        if activation_name == "leaky":
-            activation_layer = nn.LeakyReLU(inplace=True)
+            if activation_name == "leaky":
+                activation_layer = nn.LeakyReLU(inplace=True)
+
             sequential_module.add_module(activation_name + str(i), activation_layer)
 
+            if "batch_normalize" in network.keys():
+                batch_layer = nn.BatchNorm2d(num_features=out_channels)
+                sequential_module.add_module("batch" + str(i), batch_layer)
+
+        elif x == "upsample":
+            upsample_layer = nn.Upsample(scale_factor=2, mode="bilinear")
+            sequential_module.add_module("upsample" + str(i), upsample_layer)
+
+        elif x == "route":
+            route = VacantLayer()
+            sequential_module.add_module("route" + str(i), route)
+
+        elif x == "shortcut":
+            shortcut = VacantLayer()
+            sequential_module.add_module("shortcut" + str(i), shortcut)
+
         in_channels = out_channels
-        print(sequential_module)
+
         module_list.append(sequential_module)
 
-    # elif x == "shortcut":
-    # make a shortcut layer
-
-    # elif x == "yolo":
-    # make a yolo layer
-
-    # elif x == "route":
-    # make a route layer
-
-    # elif x == "upsample":
-    # make an upsample layer
-
-    print("Module list:", module_list)
-    return network_info
+    return network_info, module_list
 
 
 if __name__ == "__main__":
     file_directory = os.getcwd() + '\cfg\yolov3.cfg.txt'
     block_list = read_cfg(file_directory)
-    network_info = create_network(block_list)
+    network_info, module_list = create_network(block_list)
+    print(module_list)

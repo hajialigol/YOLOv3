@@ -24,7 +24,7 @@ def read_cfg(file):
             elif line_length > 1:  # If the string is not a new model type, you have the key and values
                 # Check if the string is a particular length:
                 # If it is, you're going to have to add the other elements as  "values" in key-value pairs
-                key = line_word_list[0].replace("# ", "")
+                key = line_word_list[0].replace("# ", "").strip()
                 value = line_word_list[1].replace("\n", "")
                 block_map[key] = value
     return block_list
@@ -36,8 +36,7 @@ def create_network(network_blocks):
     out_channels = 0
     kernel_size = 0
     stride = 1
-    pad = 1
-    batch_norm = 0
+    padding = 1
     module_list = nn.ModuleList()
 
     for i, network in enumerate(network_blocks[1:]):
@@ -58,11 +57,9 @@ def create_network(network_blocks):
             sequential_module.add_module("conv" + str(i), conv_layer)
 
             activation_name = network['activation']
-
             if activation_name == "leaky":
                 activation_layer = nn.LeakyReLU(inplace=True)
-
-            sequential_module.add_module(activation_name + str(i), activation_layer)
+                sequential_module.add_module(activation_name + str(i), activation_layer)
 
             if "batch_normalize" in network.keys():
                 batch_layer = nn.BatchNorm2d(num_features=out_channels)
@@ -75,6 +72,20 @@ def create_network(network_blocks):
         elif x == "route":
             route = VacantLayer()
             sequential_module.add_module("route" + str(i), route)
+            layers = network['layers'].split(",")
+            layer_list = [int(layer) for layer in layers]
+            first_layer = layer_list[0]
+            
+            if len(layer_list) == 1:
+                new_layer = module_list[i + first_layer]
+                out_channels = new_layer[0].out_channels
+
+            elif len(layer_list) == 2:
+                second_layer = layer_list[1]
+                first_layer_filters = module_list[i - 1 + first_layer][0].out_channels
+                second_layer_filters = module_list[second_layer - 1][0].out_channels
+                out_channels = first_layer_filters + second_layer_filters
+
 
         elif x == "shortcut":
             shortcut = VacantLayer()

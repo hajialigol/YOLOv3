@@ -8,6 +8,11 @@ class VacantLayer(nn.Module):
         super(VacantLayer, self).__init__()
 
 
+class DetectionLayer(nn.Module):
+    def __init__(self, anchors):
+        self.anchors = anchors
+
+
 def read_cfg(file):
     block_list = []
     block_map = {}
@@ -22,8 +27,6 @@ def read_cfg(file):
                 value = re.findall(r"\[([A-Za-z0-9_]+)\]", line_word_list[0])[0]
                 block_map["model_type"] = value
             elif line_length > 1:  # If the string is not a new model type, you have the key and values
-                # Check if the string is a particular length:
-                # If it is, you're going to have to add the other elements as  "values" in key-value pairs
                 key = line_word_list[0].replace("# ", "").strip()
                 value = line_word_list[1].replace("\n", "")
                 block_map[key] = value
@@ -52,8 +55,10 @@ def create_network(network_blocks):
             pass
 
         if x == "convolutional":
+            bias_parameter = (False if "batch_normalize" in network.keys() else True)
+
             conv_layer = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size,
-                                   stride=stride, padding=padding, bias=False)
+                                   stride=stride, padding=padding, bias=bias_parameter)
             sequential_module.add_module("conv" + str(i), conv_layer)
 
             activation_name = network['activation']
@@ -61,7 +66,7 @@ def create_network(network_blocks):
                 activation_layer = nn.LeakyReLU(inplace=True)
                 sequential_module.add_module(activation_name + str(i), activation_layer)
 
-            if "batch_normalize" in network.keys():
+            if not bias_parameter:
                 batch_layer = nn.BatchNorm2d(num_features=out_channels)
                 sequential_module.add_module("batch" + str(i), batch_layer)
 
@@ -75,7 +80,7 @@ def create_network(network_blocks):
             layers = network['layers'].split(",")
             layer_list = [int(layer) for layer in layers]
             first_layer = layer_list[0]
-            
+
             if len(layer_list) == 1:
                 new_layer = module_list[i + first_layer]
                 out_channels = new_layer[0].out_channels
@@ -91,6 +96,14 @@ def create_network(network_blocks):
             shortcut = VacantLayer()
             sequential_module.add_module("shortcut" + str(i), shortcut)
 
+        elif x == "yolo":
+            masks = network['mask'].split(",")
+            masks = [int(mask) for mask in masks]
+            anchors = network['anchors'].split(",")
+            anchors = [int(anchor) for anchor in anchors]
+            anchors = [(anchors[i], anchors[i + 1]) for i in range(0, len(anchors), 2)]
+            DetectionLayer(anchors)
+
         in_channels = out_channels
 
         module_list.append(sequential_module)
@@ -102,4 +115,3 @@ if __name__ == "__main__":
     file_directory = os.getcwd() + '\cfg\yolov3.cfg.txt'
     block_list = read_cfg(file_directory)
     network_info, module_list = create_network(block_list)
-    print(module_list)

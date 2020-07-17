@@ -8,19 +8,30 @@ class VacantLayer(nn.Module):
         super(VacantLayer, self).__init__()
 
 
+
 class DetectionLayer(nn.Module):
     def __init__(self, anchors):
         self.anchors = anchors
 
 
+
 def read_cfg(file):
+    '''
+    Desc:
+        This method reads the YoloV3 configuration file and maps the network name to network's architecture.
+    Inpt:
+        file [file]: The configuration file to read and map data from.
+    Oupt:
+        block_list [list]: List of dictionaries, where each dictionary has keys corresponding to feature names
+        of an architecture and the values are the feature's values.
+    '''
     block_list = []
     block_map = {}
     with open(file_directory, 'r') as file:
         for i, line in enumerate(file):
             line_word_list = line.split("=")
             line_length = len(line_word_list)
-            if line[0] == '[':  # Check if you're at a new block => you need to create a new dictionary
+            if line[0] == '[':  # Check if you're at a new block. If you are, you need to create a new dictionary
                 if i != 0:  # Avoid adding an empty dictionary
                     block_list.append(block_map.copy())
                 block_map = {}
@@ -33,7 +44,19 @@ def read_cfg(file):
     return block_list
 
 
+
 def create_network(network_blocks):
+    '''
+    Desc:
+        This method creates sequential models from a list of dictionaries corresponding to the model's
+        architecture.
+    Inpt:
+        network_blocks [list]: List YoloV3's architecture as a list of dictionaries.
+    Oupt:
+        network_info [list]: Information about the YoloV3 network.
+        module_list [list]: List of sequential models.
+
+    '''
     network_info = network_blocks[0]
     in_channels = int(network_info['channels'])
     out_channels = 0
@@ -109,6 +132,7 @@ def create_network(network_blocks):
         module_list.append(sequential_module)
 
     return network_info, module_list
+
 
 
 if __name__ == "__main__":
